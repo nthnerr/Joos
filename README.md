@@ -34,4 +34,4 @@
 * **Platform:** Compatible with Windows and macOS.
 
 ---
-*Created by [nthnerr](https://github.com/nthnerr/Joos)*
+*Created by [nthnerr](https://github.com/nthnerr)*
