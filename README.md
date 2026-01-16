@@ -2,8 +2,6 @@
 
 **JOOS** is a simple, high-performance MP4 exporter for Adobe After Effects. It bridges the After Effects Render Queue with FFmpeg to deliver professional H.264 files without the extra steps.
 
-[Download Latest Release](https://github.com/nthnerr/Joos/releases)
-
 ---
 
 ## Why use JOOS?
