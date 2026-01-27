@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>JOOS v1.1</title>
+        <link rel="stylesheet" href="css/style.css" />
+        <script src="js/CSInterface.js"></script>
+    </head>
+    <body>
+        <div class="panel-wrapper">
+            <div class="panel-container">
+                <header class="header">
+                    <h1 class="brand">JOOS</h1>
+                </header>
+
+                <div class="version">V.1.1.258</div>
+
+                <section class="quality-section">
+                    <div class="quality-header">
+                        <span class="label">QUALITY</span>
+                        <span id="quality-name" class="quality-value"
+                            >Balanced</span
+                        >
+                    </div>
+                    <div class="slider-container">
+                        <input
+                            type="range"
+                            id="quality-slider"
+                            min="1"
+                            max="9"
+                            step="1"
+                            value="5"
+                            class="quality-slider"
+                        />
+                        <div class="slider-points">
+                            <span></span><span></span><span></span><span></span>
+                            <span></span><span></span><span></span><span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="upscale-section">
+                    <div class="upscale-label">UPSCALE</div>
+                    <div class="upscale-buttons">
+                        <input
+                            type="radio"
+                            name="upscale"
+                            value="1"
+                            id="u1"
+                            checked
+                        />
+                        <label for="u1" class="upscale-btn">OFF</label>
+
+                        <input type="radio" name="upscale" value="2" id="u2" />
+                        <label for="u2" class="upscale-btn">2X</label>
+
+                        <input type="radio" name="upscale" value="4" id="u4" />
+                        <label for="u4" class="upscale-btn">4X</label>
+                    </div>
+                </section>
+
+                <button id="export-btn" class="export-button">EXPORT</button>
+
+                <div class="credit">
+                    Made with <span class="heart">❤</span> by
+                    <a href="#" id="author-link" class="author-link">nthnerr</a>
+                </div>
+
+                <div class="progress-section">
+                    <div id="status-msg" class="status-text">
+                        Ready to export...
+                    </div>
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill"></div>
+                        <span id="progress-pct" class="progress-text">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="js/main.js"></script>
+    </body>
+</html>
