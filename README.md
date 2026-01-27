@@ -28,8 +28,8 @@ You only need to do this once - it stays enabled permanently.
 
 Copy the `com.joos.export` folder to your CEP extensions directory:
 
-* **Windows:** `C:\Program Files\Common Files\Adobe\CEP\extensions\`
-* **macOS:** `/Library/Application Support/Adobe/CEP/extensions/`
+* **Windows:** `C:\Program Files (x86)\Common Files\Adobe\CEP\extensions`
+* **macOS:** `C:\Users\[NAME]\AppData\Roaming\Adobe\CEP\extensions`
 
 If the `extensions` folder doesn't exist, create it.
 
