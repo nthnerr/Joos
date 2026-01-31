@@ -1,261 +1,372 @@
-"use strict";
+const { spawn } = require("child_process");
+const { EventEmitter } = require("events");
+const path = require("path");
+const fs = require("fs");
+const DebugLogger = require("./debug-logger");
 
-var ERROR_CODES = {
-  NO_COMPOSITION: "E001",
-  PROJECT_NOT_SAVED: "E002",
-  CANCELLED: "E003",
-  NO_AERENDER: "E004",
-};
-
-function writeDebugLog(message) {
-  try {
-    var extScript = new File($.fileName);
-    var extFolder = extScript.parent;
-    var debugFile = new File(extFolder.fsName + "/.debug");
-    debugFile.encoding = "UTF-8";
-    debugFile.open("a");
-    var timestamp = new Date().toISOString();
-    debugFile.writeln("[" + timestamp + "] [JSX] " + message);
-    debugFile.close();
-  } catch (e) {}
-}
-
-function joos_get_export_info() {
-  try {
-    writeDebugLog("=== EXPORT SETUP STARTED ===");
-    var activeComp = app.project.activeItem;
-    if (!activeComp || !(activeComp instanceof CompItem)) {
-      writeDebugLog("ERROR: No composition selected");
-      return JSON.stringify({
-        status: "error",
-        code: ERROR_CODES.NO_COMPOSITION,
-        message:
-          "Please select a composition before exporting.\n\nHow to fix:\n• Click a composition in the Project panel\n• Or select one in the Timeline",
-      });
-    }
-
-    if (!app.project.file) {
-      writeDebugLog("ERROR: Project not saved");
-      return JSON.stringify({
-        status: "error",
-        code: ERROR_CODES.PROJECT_NOT_SAVED,
-        message:
-          "Save your project before exporting.\n\nQuick action:\n• Press Ctrl+S to save\n• Or go to File → Save Project",
-      });
-    }
-
-    writeDebugLog("Composition: " + activeComp.name);
-    writeDebugLog("Resolution: " + activeComp.width + "x" + activeComp.height);
-    writeDebugLog("Frame Rate: " + activeComp.frameRate + " fps");
-    writeDebugLog("Duration: " + activeComp.duration.toFixed(2) + "s");
-    writeDebugLog("Project: " + app.project.file.fsName);
-
-    var outputFile = File.saveDialog(
-      "Save MP4 as...",
-      activeComp.name + ".mp4",
-    );
-    if (!outputFile) {
-      writeDebugLog("Export cancelled by user");
-      return JSON.stringify({
-        status: "error",
-        code: ERROR_CODES.CANCELLED,
-        message: "Export cancelled",
-      });
-    }
-
-    var outputPath = outputFile.fsName;
-    if (!outputPath.match(/\.mp4$/i)) {
-      outputPath += ".mp4";
-      outputFile = new File(outputPath);
-    }
-
-    var timestamp = new Date().getTime();
-    var tempFolderPath = outputFile.parent.fsName + "/joos_temp_" + timestamp;
-    var tempFolder = new Folder(tempFolderPath);
-
-    if (!tempFolder.exists && !tempFolder.create()) {
-      writeDebugLog("ERROR: Could not create temp folder: " + tempFolderPath);
-      return JSON.stringify({
-        status: "error",
-        message:
-          "Failed to create temporary export folder.\n\nPossible causes:\n• Insufficient disk space\n• No write permissions\n• Folder path: " +
-          tempFolderPath,
-      });
-    }
-
-    var aerenderPath = findAerenderPath();
-    if (!aerenderPath) {
-      writeDebugLog("ERROR: aerender not found");
-      return JSON.stringify({
-        status: "error",
-        code: ERROR_CODES.NO_AERENDER,
-        message:
-          "Cannot find After Effects renderer (aerender.exe).\n\nWhat to try:\n• Restart After Effects\n• Reinstall After Effects if issue persists",
-      });
-    }
-
-    var aviPath = tempFolderPath + "/intermediate.avi";
-    writeDebugLog("Output file: " + outputPath);
-    writeDebugLog("Temp folder: " + tempFolderPath);
-    writeDebugLog("aerender path: " + aerenderPath);
-
-    var setupResult = setupRenderQueue(activeComp, aviPath);
-
-    if (!setupResult.success) {
-      writeDebugLog("ERROR: Render queue setup failed - " + setupResult.error);
-      return JSON.stringify({
-        status: "error",
-        message:
-          "Failed to configure render queue.\n\nWhat to try:\n• Close and reopen this panel\n• Check your composition settings\n\nError details: " +
-          setupResult.error,
-      });
-    }
-
-    app.project.save();
-    writeDebugLog("Setup completed successfully");
-
-    return JSON.stringify({
-      status: "success",
-      projectPath: app.project.file.fsName,
-      compName: activeComp.name,
-      width: activeComp.width,
-      height: activeComp.height,
-      frameRate: activeComp.frameRate,
-      duration: activeComp.duration,
-      outputFile: outputPath,
-      tempFolder: tempFolderPath,
-      aviFile: aviPath,
-      aerenderPath: aerenderPath,
-    });
-  } catch (e) {
-    writeDebugLog(
-      "ERROR: Unexpected error - " + e.toString() + " (Line: " + e.line + ")",
-    );
-    return JSON.stringify({
-      status: "error",
-      message:
-        "Something went wrong during export setup.\n\nWhat to try:\n• Try exporting again\n• Restart After Effects\n• Check the .debug file for details\n\nError: " +
-        e.toString() +
-        " (Line " +
-        e.line +
-        ")",
-    });
+class AsyncRenderer extends EventEmitter {
+  constructor() {
+    super();
+    this.tempFolder = null;
+    this.startTime = null;
+    this.debug = new DebugLogger();
   }
-}
 
-function setupRenderQueue(comp, aviPath) {
-  try {
-    while (app.project.renderQueue.numItems > 0) {
-      app.project.renderQueue.item(1).remove();
-    }
+  async exportComposition(settings) {
+    this.startTime = Date.now();
+    this.tempFolder = settings.tempFolder;
 
-    var renderItem = app.project.renderQueue.items.add(comp);
-    renderItem.applyTemplate("Best Settings");
+    this.debug.log("=== EXPORT STARTED ===");
+    this.debug.settings(settings);
 
-    var om = renderItem.outputModule(1);
+    console.log("[JOOS] Starting export...");
+    console.log(`[JOOS] Composition: ${settings.compName}`);
+    console.log(`[JOOS] Resolution: ${settings.width}x${settings.height}`);
+    console.log(`[JOOS] Duration: ${settings.duration.toFixed(2)}s`);
 
     try {
-      om.format = "AVI";
-      om.videoCodec = "None";
-      om.audioCodec = "None";
-      om.includeAudio = false;
-      om.file = new File(aviPath);
-      writeDebugLog("Applied custom uncompressed AVI settings");
-    } catch (e) {
-      writeDebugLog("WARNING: Failed to set AVI codec - " + e.toString());
-      om.format = "AVI";
-      om.file = new File(aviPath);
+      console.log("[JOOS] Step 1: Rendering AVI...");
+      this.emit("progress", {
+        message: "Starting After Effects render",
+        progress: 0,
+      });
+      await this.runAerender(settings);
+      this.debug.log("AVI render completed successfully");
+      console.log("[JOOS] AVI render completed");
+
+      console.log("[JOOS] Step 2: Verifying AVI...");
+      if (!fs.existsSync(settings.aviFile)) {
+        this.debug.error(
+          "AVI file not found",
+          new Error(`Expected: ${settings.aviFile}`),
+        );
+        throw new Error(
+          "Render failed - AVI file was not created.\n\nWhat to try:\n• Check your composition settings\n• Ensure sufficient disk space\n• Verify render queue configuration\n\nExpected file:\n" +
+            settings.aviFile,
+        );
+      }
+
+      const aviStats = fs.statSync(settings.aviFile);
+      const aviSizeMB = (aviStats.size / 1024 / 1024).toFixed(2);
+      this.debug.log(`AVI file size: ${aviSizeMB} MB`);
+      console.log(`[JOOS] AVI created: ${aviSizeMB} MB`);
+
+      console.log("[JOOS] Step 3: Converting to MP4...");
+      console.log(
+        `[JOOS] CRF: ${settings.crf}, Preset: ${settings.preset}, Upscale: ${settings.upscale}x`,
+      );
+
+      this.emit("progress", { message: "Converting to MP4", progress: 65 });
+      await this.runFFmpeg(settings);
+      this.debug.log("FFmpeg conversion completed successfully");
+      console.log("[JOOS] Conversion completed");
+
+      console.log("[JOOS] Step 4: Verifying output...");
+      if (!fs.existsSync(settings.outputFile)) {
+        this.debug.error(
+          "MP4 file not found",
+          new Error(`Expected: ${settings.outputFile}`),
+        );
+        throw new Error(
+          "Encoding failed - MP4 file was not created.\n\nPossible causes:\n• Insufficient disk space\n• Invalid output path\n• FFmpeg encoding error\n\nExpected file:\n" +
+            settings.outputFile,
+        );
+      }
+
+      const outputStats = fs.statSync(settings.outputFile);
+      const outputSizeMB = (outputStats.size / 1024 / 1024).toFixed(2);
+      this.debug.log(`MP4 file size: ${outputSizeMB} MB`);
+      console.log(`[JOOS] Output created: ${outputSizeMB} MB`);
+
+      console.log("[JOOS] Step 5: Cleaning up...");
+      this.emit("progress", { message: "Cleaning up", progress: 98 });
+      await this.cleanup(settings.aviFile);
+      console.log("[JOOS] Cleanup complete");
+
+      const elapsed = ((Date.now() - this.startTime) / 1000).toFixed(1);
+      this.debug.log(`=== EXPORT COMPLETED in ${elapsed}s ===`);
+      console.log(`[JOOS] Export completed in ${elapsed}s`);
+      console.log(`[JOOS] Final size: ${outputSizeMB} MB`);
+
+      this.emit("progress", { message: "Export complete", progress: 100 });
+      return { status: "success" };
+    } catch (error) {
+      this.debug.error("Export failed", error);
+      console.error("[JOOS] Export failed:", error.message);
+      await this.cleanup(settings.aviFile);
+      throw error;
     }
+  }
 
-    renderItem.render = true;
+  runAerender(settings) {
+    return new Promise((resolve, reject) => {
+      this.debug.log(`Starting aerender: ${settings.aerenderPath}`);
+      if (!fs.existsSync(settings.aerenderPath)) {
+        this.debug.error(
+          "aerender.exe not found",
+          new Error(settings.aerenderPath),
+        );
+        return reject(
+          new Error(
+            "Cannot find After Effects renderer.\n\nWhat to try:\n• Restart After Effects\n• Reinstall After Effects\n\nExpected path:\n" +
+              settings.aerenderPath,
+          ),
+        );
+      }
 
-    return { success: true };
-  } catch (e) {
-    return { success: false, error: e.toString() };
+      if (!fs.existsSync(this.tempFolder)) {
+        this.debug.error("Temp folder not found", new Error(this.tempFolder));
+        return reject(
+          new Error(
+            "Temporary folder not found.\n\nWhat to try:\n• Export again\n• Check folder permissions\n\nMissing folder:\n" +
+              this.tempFolder,
+          ),
+        );
+      }
+
+      const expectedFrames = Math.ceil(settings.duration * settings.frameRate);
+      const args = [
+        "-project",
+        settings.projectPath,
+        "-comp",
+        settings.compName,
+      ];
+      this.debug.log(`Expected frames: ${expectedFrames}`);
+
+      const proc = spawn(settings.aerenderPath, args, {
+        windowsHide: false,
+      });
+
+      let stdout = "";
+      let stderr = "";
+      let lastProgress = 5;
+      let lastFrame = 0;
+
+      this.emit("progress", {
+        message: "After Effects rendering",
+        progress: 5,
+      });
+
+      proc.stdout.on("data", (data) => {
+        const text = data.toString();
+        stdout += text;
+
+        const match = text.match(/\((\d+)\):/);
+        if (match) {
+          const frameNum = parseInt(match[1], 10);
+          if (frameNum > lastFrame) {
+            lastFrame = frameNum;
+            const progress = Math.min(100, (frameNum / expectedFrames) * 100);
+            const scaledProgress = 5 + progress * 0.6;
+
+            if (scaledProgress > lastProgress + 0.1) {
+              lastProgress = scaledProgress;
+              this.emit("progress", {
+                message: `Rendering: ${frameNum} of ${expectedFrames} frames`,
+                progress: scaledProgress,
+              });
+            }
+          }
+        }
+      });
+
+      proc.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      proc.on("close", (code) => {
+        if (code === 0) {
+          this.emit("progress", {
+            message: "After Effects render complete",
+            progress: 65,
+          });
+          resolve();
+        } else {
+          const lastLines = (stdout + "\n" + stderr)
+            .split("\n")
+            .filter((l) => l.trim())
+            .slice(-15)
+            .join("\n");
+
+          this.debug.error(
+            `aerender failed with code ${code}`,
+            new Error(`Frames: ${lastFrame}/${expectedFrames}\n${lastLines}`),
+          );
+          reject(
+            new Error(
+              "After Effects render failed.\n\n" +
+                `Progress: ${lastFrame} of ${expectedFrames} frames\n` +
+                `Exit code: ${code}\n\n` +
+                "What to try:\n• Check composition settings\n• Ensure sufficient RAM\n• Try a shorter composition\n\n" +
+                "Last output:\n" +
+                lastLines,
+            ),
+          );
+        }
+      });
+
+      proc.on("error", (err) => {
+        this.debug.error("Failed to launch aerender", err);
+        reject(
+          new Error(
+            "Failed to start After Effects renderer.\n\nWhat to try:\n• Close other After Effects instances\n• Restart your computer\n• Reinstall After Effects\n\nError: " +
+              err.message,
+          ),
+        );
+      });
+    });
+  }
+
+  runFFmpeg(settings) {
+    return new Promise((resolve, reject) => {
+      const isWin = process.platform === "win32";
+      const binFolder = path.join(path.dirname(__dirname), "bin");
+      const ffmpegPath = path.join(binFolder, isWin ? "ffmpeg.exe" : "ffmpeg");
+
+      this.debug.log(`Starting FFmpeg: ${ffmpegPath}`);
+      if (!fs.existsSync(ffmpegPath)) {
+        this.debug.error("FFmpeg not found", new Error(ffmpegPath));
+        return reject(
+          new Error(
+            "FFmpeg encoder not found.\n\nWhat to try:\n• Reinstall JOOS extension\n• Check installation files\n\nExpected path:\n" +
+              ffmpegPath,
+          ),
+        );
+      }
+
+      const outputWidth = settings.width * settings.upscale;
+      const outputHeight = settings.height * settings.upscale;
+      const needsUpscale = settings.upscale > 1;
+
+      const args = [
+        "-y",
+        "-i",
+        settings.aviFile,
+        "-c:v",
+        "libx264",
+        "-crf",
+        settings.crf.toString(),
+        "-preset",
+        settings.preset,
+      ];
+
+      if (needsUpscale) {
+        args.push("-vf", `scale=${outputWidth}:${outputHeight}:flags=lanczos`);
+      }
+
+      args.push(
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart",
+        settings.outputFile,
+      );
+
+      const proc = spawn(ffmpegPath, args, {
+        windowsHide: false,
+      });
+
+      let stderr = "";
+      let lastProgress = 65;
+      let processedSeconds = 0;
+
+      proc.stderr.on("data", (data) => {
+        const text = data.toString();
+        stderr += text;
+
+        const timeMatch = text.match(/time=(\d{2}):(\d{2}):(\d{2})\.\d{2}/);
+        if (timeMatch) {
+          const hours = parseInt(timeMatch[1], 10);
+          const minutes = parseInt(timeMatch[2], 10);
+          const seconds = parseInt(timeMatch[3], 10);
+          processedSeconds = hours * 3600 + minutes * 60 + seconds;
+
+          const progress = Math.min(
+            100,
+            (processedSeconds / settings.duration) * 100,
+          );
+          const scaledProgress = 65 + progress * 0.33;
+
+          if (scaledProgress > lastProgress + 0.1) {
+            lastProgress = scaledProgress;
+            this.emit("progress", {
+              message: `Encoding: ${processedSeconds.toFixed(1)}s of ${settings.duration.toFixed(1)}s`,
+              progress: scaledProgress,
+            });
+          }
+        }
+      });
+
+      proc.on("close", (code) => {
+        if (code === 0) {
+          this.emit("progress", { message: "Encoding complete", progress: 98 });
+          resolve();
+        } else {
+          const errorLines = stderr.split("\n").slice(-10).join("\n");
+          this.debug.error(
+            `FFmpeg failed with code ${code}`,
+            new Error(
+              `Processed: ${processedSeconds.toFixed(1)}s/${settings.duration.toFixed(1)}s\n${errorLines}`,
+            ),
+          );
+          reject(
+            new Error(
+              "Video encoding failed.\n\n" +
+                `Progress: ${processedSeconds.toFixed(1)}s of ${settings.duration.toFixed(1)}s\n` +
+                `Settings: CRF=${settings.crf}, Preset=${settings.preset}, Upscale=${settings.upscale}x\n` +
+                `Exit code: ${code}\n\n` +
+                "What to try:\n• Lower quality setting\n• Disable upscaling\n• Check disk space\n\n" +
+                "FFmpeg output:\n" +
+                errorLines,
+            ),
+          );
+        }
+      });
+
+      proc.on("error", (err) => {
+        this.debug.error("Failed to launch FFmpeg", err);
+        reject(
+          new Error(
+            "Failed to start video encoder.\n\nWhat to try:\n• Reinstall JOOS extension\n• Close other video encoding apps\n• Restart your computer\n\nError: " +
+              err.message,
+          ),
+        );
+      });
+    });
+  }
+
+  async cleanup(aviFile) {
+    return new Promise((resolve) => {
+      try {
+        if (fs.existsSync(aviFile)) {
+          try {
+            fs.unlinkSync(aviFile);
+          } catch (e) {
+            console.error(`[JOOS] Could not delete AVI: ${e.message}`);
+          }
+        }
+
+        if (this.tempFolder && fs.existsSync(this.tempFolder)) {
+          try {
+            const files = fs.readdirSync(this.tempFolder);
+            for (const file of files) {
+              try {
+                fs.unlinkSync(path.join(this.tempFolder, file));
+              } catch (e) {}
+            }
+            fs.rmdirSync(this.tempFolder);
+          } catch (e) {
+            console.error(`[JOOS] Could not delete temp folder: ${e.message}`);
+          }
+        }
+
+        resolve();
+      } catch (e) {
+        console.error(`[JOOS] Cleanup error: ${e.message}`);
+        resolve();
+      }
+    });
   }
 }
 
-function findAerenderPath() {
-  var isWin = $.os.toLowerCase().indexOf("windows") !== -1;
-  var isMac = $.os.toLowerCase().indexOf("mac") !== -1;
-
-  if (isWin) {
-    var binName = "aerender.exe";
-    var aeFolder = new File(app.path).parent;
-
-    var supportFiles = new Folder(aeFolder.fsName + "/Support Files");
-    if (supportFiles.exists) {
-      var aerender = new File(supportFiles.fsName + "/" + binName);
-      if (aerender.exists) return aerender.fsName;
-    }
-
-    var aerender = new File(aeFolder.fsName + "/" + binName);
-    if (aerender.exists) return aerender.fsName;
-
-    var parentFolder = aeFolder.parent;
-    if (parentFolder) {
-      aerender = new File(parentFolder.fsName + "/" + binName);
-      if (aerender.exists) return aerender.fsName;
-    }
-  } else if (isMac) {
-    var binName = "aerender";
-    var macOSFolder = new File(app.path).parent;
-
-    var aerender = new File(macOSFolder.fsName + "/" + binName);
-    if (aerender.exists) return aerender.fsName;
-
-    var contentsFolder = macOSFolder.parent;
-    if (contentsFolder) {
-      aerender = new File(contentsFolder.fsName + "/MacOS/" + binName);
-      if (aerender.exists) return aerender.fsName;
-    }
-  }
-
-  return null;
-}
-
-function showError(title, message) {
-  var dialog = new Window("dialog", "JOOS v1.1");
-  dialog.alignChildren = ["fill", "top"];
-  dialog.spacing = 0;
-  dialog.margins = 0;
-
-  var mainPanel = dialog.add("panel");
-  mainPanel.alignChildren = ["fill", "top"];
-  mainPanel.spacing = 15;
-  mainPanel.margins = 20;
-
-  var titleGroup = mainPanel.add("group");
-  titleGroup.alignChildren = ["left", "center"];
-  titleGroup.spacing = 8;
-
-  var iconText = titleGroup.add("statictext", undefined, "⚠");
-  iconText.graphics.font = ScriptUI.newFont("Arial", "BOLD", 18);
-
-  var titleText = titleGroup.add("statictext", undefined, title);
-  titleText.graphics.font = ScriptUI.newFont("Arial", "BOLD", 14);
-
-  var messageText = mainPanel.add("statictext", undefined, message, {
-    multiline: true,
-  });
-  messageText.graphics.font = ScriptUI.newFont("Arial", "REGULAR", 12);
-  messageText.preferredSize.width = 400;
-
-  var divider = mainPanel.add("panel");
-  divider.preferredSize.height = 1;
-  divider.alignment = ["fill", "top"];
-
-  var buttonGroup = mainPanel.add("group");
-  buttonGroup.alignment = ["center", "top"];
-  buttonGroup.spacing = 10;
-
-  var okButton = buttonGroup.add("button", undefined, "OK", { name: "ok" });
-  okButton.preferredSize.width = 120;
-  okButton.preferredSize.height = 32;
-
-  okButton.onClick = function () {
-    dialog.close();
-  };
-
-  dialog.show();
-}
+module.exports = AsyncRenderer;
