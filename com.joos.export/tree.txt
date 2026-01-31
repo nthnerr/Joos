@@ -1,0 +1,28 @@
+com.joos.export
+¦
+¦   .debug
+¦   
++---bin
+¦       ffmpeg
+¦       ffmpeg.exe
+¦       
++---client
+¦   ¦   index.html
+¦   ¦   
+¦   +---css
+¦   ¦       style.css
+¦   ¦       
+¦   +---js
+¦           CSInterface.js
+¦           main.js
+¦           
++---CSXS
+¦       manifest.xml
+¦       
++---host
+¦       index.jsx
+¦       
++---node
+        async-renderer.js
+        debug-logger.js
+        
