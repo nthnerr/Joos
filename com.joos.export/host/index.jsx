@@ -155,14 +155,19 @@ function setupRenderQueue(comp, aviPath) {
     var om = renderItem.outputModule(1);
 
     try {
-      om.format = "AVI";
-      om.videoCodec = "None";
-      om.audioCodec = "None";
-      om.includeAudio = false;
+      var settings = om.getSettings(GetSettingsFormat.SPEC);
+      settings["Format"] = "AVI";
+      settings["Include Audio"] = false;
+
+      if (settings.hasOwnProperty("Video Output")) {
+        settings["Video Output"] = true;
+      }
+
+      om.setSettings(settings);
       om.file = new File(aviPath);
-      writeDebugLog("Applied custom uncompressed AVI settings");
+      writeDebugLog("Applied AVI settings via Property Injection");
     } catch (e) {
-      writeDebugLog("WARNING: Failed to set AVI codec - " + e.toString());
+      writeDebugLog("WARNING: Failed to set AVI settings - " + e.toString());
       om.format = "AVI";
       om.file = new File(aviPath);
     }
