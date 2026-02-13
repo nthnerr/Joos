@@ -1,6 +1,6 @@
-# JOOS v1.1
+# Joos v1.1
 
-JOOS is a CEP-based extension for Adobe After Effects that automates the export pipeline from the Render Queue to FFmpeg. It streamlines the creation of H.264/MP4 files by eliminating intermediary manual transcodes.
+Joos is a CEP-based extension for Adobe After Effects that automates the export pipeline from the Render Queue to FFmpeg. It streamlines the creation of H.264/MP4 files by eliminating intermediary manual transcodes.
 
 ---
 
@@ -15,7 +15,7 @@ JOOS is a CEP-based extension for Adobe After Effects that automates the export 
 ## Installation
 
 ### 1. Enable Unsigned Extensions
-JOOS requires `PlayerDebugMode` to be enabled for the Adobe CEP environment.
+Joos requires `PlayerDebugMode` to be enabled for the Adobe CEP environment.
 
 * **Windows:** Execute `Enable_JOOS_Debug.bat` as Administrator.
 * **macOS:** Execute `Enable_JOOS_Debug.command`.
@@ -53,5 +53,3 @@ The following table maps the UI presets to their respective FFmpeg CRF values.
 
 **Note:** CRF values < 10 result in high-bitrate files that may exceed the decoding capabilities of standard hardware players. Use VLC or similar software for playback.
 
----
-**Developer:** [nthnerr](https://github.com/nthnerr)
