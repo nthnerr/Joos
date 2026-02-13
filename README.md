@@ -1,78 +1,57 @@
-# JOOS
+# JOOS v1.1
 
-**JOOS** is a simple, high-performance MP4 exporter for Adobe After Effects. It bridges the After Effects Render Queue with FFmpeg to deliver professional H.264 files without the extra steps.
+JOOS is a CEP-based extension for Adobe After Effects that automates the export pipeline from the Render Queue to FFmpeg. It streamlines the creation of H.264/MP4 files by eliminating intermediary manual transcodes.
 
 ---
 
-## Why use JOOS?
+## Technical Architecture
 
-* **Fast Pipeline:** Replaces the manual workflow of exporting a massive AVI/ProRes file and then using Handbrake or other software to convert it to MP4.
-* **One-Click Workflow:** Go from your timeline to a finished MP4 in a single action.
-* **Nine Quality Presets:** Choose from nine quality levels to match your needs.
-* **Built-in Upscaling:** Optional 2x or 4x upscaling using high-quality Lanczos algorithm.
+* **Host:** Adobe After Effects (CEP)
+* **Transcoder:** FFmpeg
+* **Encoder:** `libx264` (H.264) / AAC
+* **Chroma Subsampling:** YUV 4:2:0
+* **Scaling:** Lanczos Resampling (optional 2x/4x)
 
 ## Installation
 
-### Step 1: Enable Debug Mode (Required)
+### 1. Enable Unsigned Extensions
+JOOS requires `PlayerDebugMode` to be enabled for the Adobe CEP environment.
 
-Since JOOS is not digitally signed, you need to enable debug mode once:
+* **Windows:** Execute `Enable_JOOS_Debug.bat` as Administrator.
+* **macOS:** Execute `Enable_JOOS_Debug.command`.
 
-* **Windows:** Right-click `Enable_JOOS_Debug.bat` and select "Run as administrator"
-* **macOS:** Right-click `Enable_JOOS_Debug.command` and select "Open"
-
-You only need to do this once. It stays enabled permanently.
-
-### Step 2: Install Extension
-
-Copy the `com.joos.export` folder to your CEP extensions directory:
+### 2. Deployment
+Move the `com.joos.export` directory to the system-specific CEP extensions folder:
 
 * **Windows:** `C:\Program Files (x86)\Common Files\Adobe\CEP\extensions`
-* **macOS:** `C:\Users\[NAME]\AppData\Roaming\Adobe\CEP\extensions`
+* **macOS:** `~/Library/Application Support/Adobe/CEP/extensions` 
 
-If the `extensions` folder doesn't exist, create it.
+*Note: Create the `extensions` directory if it is not present.*
 
-### Step 3: Restart After Effects
+## Usage
 
-Close After Effects completely and reopen it.
+1. Initialize the extension: **Window > Extensions > JOOS v1.1**.
+2. Select target **Composition**.
+3. Configure **CRF** (Constant Rate Factor) and **Scaling** parameters.
+4. Execute **EXPORT** to trigger the background render and transcode process.
 
-### Step 4: Open JOOS
+## Encoding Parameters
 
-In After Effects, go to: **Window → Extensions → JOOS v1.1**
+The following table maps the UI presets to their respective FFmpeg CRF values.
 
-## How to Use
+| Preset | CRF | Profile |
+| :--- | :--- | :--- |
+| Eco | 18 | Fastest |
+| Draft | 16 | Very Fast |
+| Fast | 14 | Fast |
+| Standard | 12 | Medium |
+| Balanced | 10 | Medium |
+| High | 8 | Slow |
+| Ultra | 4 | Very Slow |
+| Production | 2 | Slower |
+| Lossless | 0 | Placebo |
 
-1. Select your **Composition** in the Project panel or Timeline.
-2. Inside the **JOOS v1.1** panel, choose your **Quality** setting, and your **Upscale** setting.
-3. Click **EXPORT**.
-4. Choose your destination.
-5. Wait for the export to complete.
-
-## Quality Presets
-
-JOOS offers 9 quality levels optimized for different use cases:
-
-| Preset | CRF | Speed | Best For |
-|--------|-----|-------|----------|
-| **Eco** | 18 | Fastest | Quick previews, drafts |
-| **Draft** | 16 | Very Fast | Internal reviews |
-| **Fast** | 14 | Fast | Social media, web |
-| **Standard** | 12 | Moderate | General purpose |
-| **Balanced** | 10 | Balanced | Most projects (default) |
-| **High** | 8 | Slow | High-quality deliverables |
-| **Ultra** | 4 | Very Slow | Professional work |
-| **Production** | 2 | Extremely Slow | Final masters |
-| **Lossless** | 0 | Slowest | Archival quality |
-
-*Lower CRF = Higher Quality. Speed refers to encoding time.*
-*Higher CRF options might create files that cannot be displayed on non-professional media players. Use VLC Media Player to circumvent this issue.*
-
-## Technical Specs
-
-* **Format:** AVI // MP4 (H.264 / AAC)
-* **Encoding:** FFmpeg with libx264
-* **Upscaling:** Lanczos algorithm 
-* **Color Space:** YUV 4:2:0
-* **Platform:** Compatible with Windows and macOS
+**Note:** CRF values < 10 result in high-bitrate files that may exceed the decoding capabilities of standard hardware players. Use VLC or similar software for playback.
 
 ---
-*Created by [nthnerr](https://github.com/nthnerr)*
+**Developer:** [nthnerr](https://github.com/nthnerr)
