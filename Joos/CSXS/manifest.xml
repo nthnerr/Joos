@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<ExtensionManifest
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    ExtensionBundleId="com.joos.export"
+    ExtensionBundleName="Joos"
+    ExtensionBundleVersion="1.2.17"
+    Version="11.0">
+
+    <ExtensionList>
+        <Extension Id="com.joos.export.panel" Version="1.2.17" />
+    </ExtensionList>
+
+    <ExecutionEnvironment>
+        <HostList>
+            <Host Name="AEFT" Version="[16.0,99.9]" />
+        </HostList>
+        <LocaleList>
+            <Locale Code="All" />
+        </LocaleList>
+        <RequiredRuntimeList>
+            <RequiredRuntime Name="CSXS" Version="11.0" />
+        </RequiredRuntimeList>
+    </ExecutionEnvironment>
+
+    <DispatchInfoList>
+        <Extension Id="com.joos.export.panel">
+            <DispatchInfo>
+                <UI>
+                    <Type>Panel</Type>
+                    <Menu>Joos</Menu>
+                    <Geometry>
+                        <Size>
+                            <Height>520</Height>
+                            <Width>240</Width>
+                        </Size>
+                        <MinSize>
+                            <Height>480</Height>
+                            <Width>200</Width>
+                        </MinSize>
+                        <MaxSize>
+                            <Height>800</Height>
+                            <Width>400</Width>
+                        </MaxSize>
+                    </Geometry>
+                </UI>
+                <Resources>
+                    <MainPath>./index.html</MainPath>
+                    <ScriptPath>./jsx/loader.jsx</ScriptPath>
+                    <CEFCommandLine>
+                        <Parameter>--enable-nodejs</Parameter>
+                        <Parameter>--mixed-context</Parameter>
+                    </CEFCommandLine>
+                </Resources>
+                <Lifecycle>
+                    <AutoVisible>true</AutoVisible>
+                </Lifecycle>
+            </DispatchInfo>
+        </Extension>
+    </DispatchInfoList>
+
+</ExtensionManifest>
