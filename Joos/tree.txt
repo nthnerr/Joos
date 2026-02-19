@@ -1,0 +1,26 @@
+        
+Joos
+¦  index.html
+¦  style.css
+¦   tree.txt
+¦  
++---assets
+¦      outputModule.aep
+¦      
++---bin
+¦      ffmpeg.exe
+¦       
++---CSXS
+¦       manifest.xml
+¦       
++---js
+¦       CSInterface.js
+¦       main.js
+¦       
++---jsx
+¦      loader.jsx
+¦       main.jsx
+¦       
++---node
+        render.js
+        
