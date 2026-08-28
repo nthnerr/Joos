@@ -3,19 +3,32 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Joos v1.2.17</title>
+        <title>Joos 1.3.29</title>
         <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="settings.css" />
         <script src="js/CSInterface.js"></script>
     </head>
     <body>
         <div class="panel-wrapper">
             <div class="panel-container">
 
+                <div id="brand-header">
+
                 <header class="header">
                     <h1 class="brand">JOOS</h1>
                 </header>
 
-                <p class="version">V.1.2.17</p>
+                <div class="meta-row">
+                    <span class="version">V.1.3.29</span>
+                    <span class="meta-divider" aria-hidden="true">&middot;</span>
+                    <button id="settings-btn" class="settings-link" type="button" aria-label="Open settings">
+                        Settings
+                    </button>
+                </div>
+
+                </div>
+
+                <div id="main-view" class="view">
 
                 <section class="quality-section">
                     <div class="quality-header">
@@ -63,7 +76,7 @@
 
                 <section class="progress-section">
                     <p id="status-msg" class="status-text" aria-live="polite" aria-atomic="true">
-                        Ready to export&#8230;
+                        <span id="status-label">Ready to export&#8230;</span><span id="status-eta"></span>
                     </p>
                     <div
                         class="progress-bar"
@@ -77,9 +90,217 @@
                     </div>
                 </section>
 
+                </div>
+
+                <div id="settings-view" class="view view-hidden">
+
+                <header class="settings-header">
+                    <button id="settings-back-btn" class="back-btn" type="button" aria-label="Back to export">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    <h2 class="settings-title">Settings</h2>
+                </header>
+
+                <div class="settings-scroll-area">
+
+                <h3 class="settings-section-heading">Appearance</h3>
+
+                <section class="setting-row">
+                    <div class="setting-label-group">
+                        <label for="accent-color-picker" class="label">ACCENT COLOR</label>
+                        <span class="hint-badge" tabindex="0">?
+                            <span class="hint-tooltip">Customize Joos&rsquo;s accent color.</span>
+                        </span>
+                    </div>
+                    <div class="color-control">
+                        <input
+                            type="color"
+                            id="accent-color-picker"
+                            class="color-swatch-input"
+                            value="#5bc0de"
+                            aria-label="Accent color picker"
+                        />
+                        <input
+                            type="text"
+                            id="accent-color-hex"
+                            class="hex-input"
+                            value="#5BC0DE"
+                            maxlength="7"
+                            spellcheck="false"
+                            autocomplete="off"
+                            aria-label="Accent color hex code"
+                        />
+                    </div>
+                </section>
+
+                <section class="setting-row stacked">
+                    <div class="setting-label-group">
+                        <label class="label">THEME</label>
+                        <span class="hint-badge" tabindex="0">?
+                            <span class="hint-tooltip">Choose a light, dark, or system-matched look.</span>
+                        </span>
+                    </div>
+                    <div class="segmented-control" role="radiogroup" aria-label="Theme">
+                        <input type="radio" name="theme" value="light" id="theme-light" />
+                        <label for="theme-light" class="segmented-option">Light</label>
+
+                        <input type="radio" name="theme" value="dark" id="theme-dark" checked />
+                        <label for="theme-dark" class="segmented-option">Dark</label>
+
+                        <input type="radio" name="theme" value="auto" id="theme-auto" />
+                        <label for="theme-auto" class="segmented-option">Auto</label>
+                    </div>
+                </section>
+
+                <section class="setting-row stacked">
+                    <div class="setting-label-group">
+                        <label class="label">UI DENSITY</label>
+                        <span class="hint-badge" tabindex="0">?
+                            <span class="hint-tooltip">Compact trims spacing and non-essential elements.</span>
+                        </span>
+                    </div>
+                    <div class="segmented-control" role="radiogroup" aria-label="UI density">
+                        <input type="radio" name="density" value="expanded" id="density-expanded" checked />
+                        <label for="density-expanded" class="segmented-option">Expanded</label>
+
+                        <input type="radio" name="density" value="compact" id="density-compact" />
+                        <label for="density-compact" class="segmented-option">Compact</label>
+                    </div>
+                </section>
+
+                <button id="appearance-reset-btn" class="reset-btn" type="button">Reset Appearance</button>
+
+                <h3 class="settings-section-heading">Export Defaults</h3>
+
+                <section class="setting-row stacked">
+                    <div class="setting-label-group">
+                        <label class="label">DEFAULT PRESET</label>
+                        <span class="hint-badge" tabindex="0">?
+                            <span class="hint-tooltip">Used when there's no remembered last-used setting to fall back on.</span>
+                        </span>
+                    </div>
+
+                    <div class="default-preset-control">
+                        <div class="quality-header">
+                            <span class="label">QUALITY</span>
+                            <span id="default-quality-name" class="quality-value">Fair</span>
+                        </div>
+                        <div class="slider-container">
+                            <input
+                                type="range"
+                                id="default-quality-slider"
+                                min="1"
+                                max="9"
+                                step="1"
+                                value="5"
+                                class="quality-slider"
+                            />
+                            <div class="slider-points" aria-hidden="true">
+                                <span></span><span></span><span></span>
+                                <span></span><span></span><span></span>
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+
+                        <div class="upscale-buttons" role="radiogroup" aria-label="Default upscale">
+                            <input type="radio" name="default-upscale" value="1" id="du1" checked />
+                            <label for="du1" class="upscale-btn">OFF</label>
+
+                            <input type="radio" name="default-upscale" value="2" id="du2" />
+                            <label for="du2" class="upscale-btn">2x</label>
+
+                            <input type="radio" name="default-upscale" value="4" id="du4" />
+                            <label for="du4" class="upscale-btn">4x</label>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="setting-row stacked">
+                    <div class="setting-label-group">
+                        <label class="label">DEFAULT OUTPUT FOLDER</label>
+                        <span class="hint-badge" tabindex="0">?
+                            <span class="hint-tooltip">Where the save dialog starts. Falls back to the project's own folder if unset.</span>
+                        </span>
+                    </div>
+                    <div class="folder-control">
+                        <span id="output-folder-path" class="folder-path">Not set &mdash; uses project folder</span>
+                        <button id="output-folder-browse-btn" class="browse-btn" type="button">Browse&#8230;</button>
+                    </div>
+                    <button id="output-folder-clear-btn" class="clear-folder-btn view-hidden" type="button">Clear</button>
+                </section>
+
+                <section class="setting-row stacked">
+                    <div class="setting-label-group">
+                        <label class="label">REMEMBER LAST USED SETTINGS</label>
+                        <span class="hint-badge" tabindex="0">?
+                            <span class="hint-tooltip">Reuse your last export's quality/upscale globally, or separately per project.</span>
+                        </span>
+                    </div>
+                    <div class="segmented-control" role="radiogroup" aria-label="Remember last used settings">
+                        <input type="radio" name="remember-scope" value="global" id="remember-global" checked />
+                        <label for="remember-global" class="segmented-option">Global</label>
+
+                        <input type="radio" name="remember-scope" value="per-project" id="remember-per-project" />
+                        <label for="remember-per-project" class="segmented-option">Per Project</label>
+                    </div>
+                </section>
+
+                <button id="export-defaults-reset-btn" class="reset-btn" type="button">Reset Export Defaults</button>
+
+                <h3 class="settings-section-heading">Behavior</h3>
+
+                <section class="setting-row">
+                    <div class="setting-label-group">
+                        <label for="behavior-auto-close" class="label">AUTO-CLOSE PANEL</label>
+                        <span class="hint-badge" tabindex="0">?
+                            <span class="hint-tooltip">Close Joos automatically once export finishes.</span>
+                        </span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="behavior-auto-close" />
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </label>
+                </section>
+
+                <section class="setting-row">
+                    <div class="setting-label-group">
+                        <label for="behavior-confirm-export" class="label">CONFIRM BEFORE EXPORT</label>
+                        <span class="hint-badge" tabindex="0">?
+                            <span class="hint-tooltip">Ask for confirmation before starting an export.</span>
+                        </span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="behavior-confirm-export" />
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </label>
+                </section>
+
+                <section class="setting-row">
+                    <div class="setting-label-group">
+                        <label for="behavior-auto-cleanup" class="label">AUTO-CLEANUP TEMP FILES</label>
+                        <span class="hint-badge" tabindex="0">?
+                            <span class="hint-tooltip">Delete the intermediate frames and audio after each export.</span>
+                        </span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="behavior-auto-cleanup" checked />
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </label>
+                </section>
+
+                <button id="behavior-reset-btn" class="reset-btn" type="button">Reset Behavior</button>
+
+                </div>
+
+                </div>
+
             </div>
+
         </div>
 
         <script src="js/main.js"></script>
+        <script src="js/settings.js"></script>
     </body>
 </html>
