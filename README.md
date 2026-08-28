@@ -1,41 +1,41 @@
 # Joos
 
-Joos is a CEP-based extension for Adobe After Effects that automates the export pipeline from the Render Queue to FFmpeg. It streamlines the creation of H.264/MP4 files by eliminating intermediary manual transcodes.
+Joos is a CEP extension for Adobe After Effects that renders a composition and automates the FFmpeg transcode step into an H.264/MP4 output. The extension bridges After Effects render output and FFmpeg encoding without requiring an intermediate manual transcode pass.
 
----
+## Architecture
 
-## Technical Architecture
-
-* **Host:** Adobe After Effects (CEP)
-* **Transcoder:** FFmpeg
-* **Encoder:** `libx264` (H.264) / AAC
-* **Chroma Subsampling:** YUV 4:2:0
-* **Scaling:** Lanczos Resampling (optional 2x/4x)
+* Host: Adobe After Effects via CEP
+* Render engine: After Effects `aerender.exe`
+* Encode pipeline: FFmpeg
+* Video codec: `libx264`
+* Audio codec: AAC
+* Pixel format: `yuv420p`
+* Optional scaling: Lanczos resampling at 2K or 4K
 
 ## Installation
 
-### 1. Enable Unsigned Extensions
-Joos requires `PlayerDebugMode` to be enabled for the Adobe CEP environment.
+### 1. Enable unsigned extensions
+Joos requires the Adobe CEP debug mode to be enabled.
 
-* **Windows:** Execute `debug.bat` as Administrator.
+* Windows: run `debug.bat` as Administrator.
 
-### 2. Deployment
-Move the `Joos` directory to the CEP extensions folder:
+### 2. Deploy the extension
+Copy the `Joos` directory into the Adobe CEP extensions folder:
 
-* **Windows:** `C:\Program Files (x86)\Common Files\Adobe\CEP\extensions`
+* Windows: `C:\Program Files (x86)\Common Files\Adobe\CEP\extensions`
 
-*Note: Create the `extensions` directory if it is not present.*
+If the `extensions` directory does not exist, create it first.
 
 ## Usage
 
-1. Initialize the extension: **Window > Extensions > Joos**.
-2. Select target **Composition**.
-3. Configure **CRF** (Constant Rate Factor) and **Scaling** parameters.
-4. Execute **EXPORT** to trigger the background render and transcode process.
+1. Open After Effects and launch Joos from Window > Extensions > Joos.
+2. Select the target composition.
+3. Choose the quality preset and optional upscale.
+4. Run the export. Joos initiates the render, encodes the output with FFmpeg, and writes the final MP4 file.
 
-## Encoding Parameters
+## Quality presets
 
-The following table maps the UI presets to their respective FFmpeg CRF values.
+The UI presets map directly to FFmpeg CRF values.
 
 | Preset | CRF | Profile |
 | :--- | :--- | :--- |
@@ -49,5 +49,5 @@ The following table maps the UI presets to their respective FFmpeg CRF values.
 | Excellent | 3 | Slower |
 | Lossless | 0 | Placebo |
 
-**Note:** CRF values < 10 result in high-bitrate files that may exceed the decoding capabilities of standard hardware players. Use VLC or similar software for playback.
+CRF values below 10 can produce very high bitrate output and may exceed the decoding limits of some consumer playback hardware. VLC or similar software is recommended for review.
 
