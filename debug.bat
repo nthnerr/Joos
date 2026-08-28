@@ -1,10 +1,10 @@
 @echo off
-:: JOOS v1.1 - Enable Debug Mode
+:: JOOS v1.3.29 - Enable Debug Mode
 :: This allows unsigned CEP extensions to run in After Effects
 
 echo.
 echo ========================================
-echo   JOOS v1.1 - Debug Mode Enabler
+echo   JOOS v1.3.29 - Debug Mode Enabler
 echo ========================================
 echo.
 echo This will enable debug mode for Adobe CEP extensions.
