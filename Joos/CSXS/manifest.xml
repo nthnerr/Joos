@@ -3,11 +3,11 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     ExtensionBundleId="com.joos.export"
     ExtensionBundleName="Joos"
-    ExtensionBundleVersion="1.2.17"
+    ExtensionBundleVersion="1.3.29"
     Version="11.0">
 
     <ExtensionList>
-        <Extension Id="com.joos.export.panel" Version="1.2.17" />
+        <Extension Id="com.joos.export.panel" Version="1.3.29" />
     </ExtensionList>
 
     <ExecutionEnvironment>
@@ -31,11 +31,11 @@
                     <Geometry>
                         <Size>
                             <Height>520</Height>
-                            <Width>240</Width>
+                            <Width>300</Width>
                         </Size>
                         <MinSize>
                             <Height>480</Height>
-                            <Width>200</Width>
+                            <Width>300</Width>
                         </MinSize>
                         <MaxSize>
                             <Height>800</Height>
