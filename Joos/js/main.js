@@ -33,6 +33,8 @@
         ui.qualitySlider = document.getElementById('quality-slider');
         ui.qualityName   = document.getElementById('quality-name');
         ui.statusMsg     = document.getElementById('status-msg');
+        ui.statusLabel   = document.getElementById('status-label');
+        ui.statusEta     = document.getElementById('status-eta');
         ui.progressFill  = document.getElementById('progress-fill');
         ui.progressPct   = document.getElementById('progress-pct');
 
@@ -41,6 +43,7 @@
 
         onQualityChange();
         setStatus('');
+        setEta(null);
         loadJSX();
     }
 
@@ -67,9 +70,22 @@
     function onExportClick() {
         if (isExporting) {
             cancelExport();
-        } else {
-            startExport();
+            return;
         }
+
+        if (window.JoosBehavior && window.JoosBehavior.getConfirmBeforeExport && window.JoosBehavior.getConfirmBeforeExport()) {
+            var level        = getQualityLevel();
+            var upscaleKey   = getUpscaleKey();
+            var qualityName  = (QUALITY_MAP[level] || QUALITY_MAP[5]).name;
+            var upscaleLabel = (UPSCALE_MAP[upscaleKey] || UPSCALE_MAP[1]).label;
+
+            var proceed = confirm(
+                'Start export?\n\nQuality: ' + qualityName + '\nUpscale: ' + upscaleLabel
+            );
+            if (!proceed) return;
+        }
+
+        startExport();
     }
 
     function cancelExport() {
@@ -85,6 +101,7 @@
         setExportButtonState(false);
         setProgress(0);
         setStatus('');
+        setEta(null);
         csInterface.evalScript('joos_cleanup()');
     }
 
@@ -104,10 +121,8 @@
         return 1;
     }
 
-    function buildFFmpegFlagsArray() {
-        var level      = getQualityLevel();
+    function buildFFmpegFlagsArray(level, upscaleKey) {
         var quality    = QUALITY_MAP[level] || QUALITY_MAP[5];
-        var upscaleKey = getUpscaleKey();
         var upscale    = UPSCALE_MAP[upscaleKey] || UPSCALE_MAP[1];
 
         var flags = [
@@ -129,10 +144,28 @@
         setExportButtonState(true);
         setStatus('Initializing\u2026');
         setProgress(0);
+        setEta(null);
 
-        var ffmpegFlagsJson  = JSON.stringify(buildFFmpegFlagsArray());
-        var jsxStringLiteral = JSON.stringify(ffmpegFlagsJson);
-        var script           = 'joos_export(' + jsxStringLiteral + ')';
+        var level      = getQualityLevel();
+        var upscaleKey = getUpscaleKey();
+
+        // Export Defaults' "remember last used settings" feature lives in
+        // settings.js; recording here (at the moment the user commits to
+        // exporting, not on completion) matches how most apps remember your
+        // last-chosen settings regardless of whether the export itself
+        // later succeeds or is cancelled.
+        if (window.JoosExportDefaults && window.JoosExportDefaults.recordLastUsed) {
+            window.JoosExportDefaults.recordLastUsed(level, upscaleKey);
+        }
+
+        var defaultFolder = (window.JoosExportDefaults && window.JoosExportDefaults.getOutputFolder)
+            ? window.JoosExportDefaults.getOutputFolder()
+            : '';
+
+        var ffmpegFlagsJson  = JSON.stringify(buildFFmpegFlagsArray(level, upscaleKey));
+        var ffmpegFlagsArg   = JSON.stringify(ffmpegFlagsJson);
+        var defaultFolderArg = JSON.stringify(defaultFolder);
+        var script           = 'joos_export(' + ffmpegFlagsArg + ', ' + defaultFolderArg + ')';
 
         csInterface.evalScript(script, function (result) {
             if (!result || result === 'undefined' || result === 'EvalScript error.') {
@@ -154,21 +187,25 @@
             }
 
             setStatus('Rendering\u2026');
-            setProgress(5);
+
+            var autoCleanup = (window.JoosBehavior && window.JoosBehavior.getAutoCleanup)
+                ? window.JoosBehavior.getAutoCleanup()
+                : true;
 
             try {
                 activeRenderProcess = renderModule.runAERender(config, onProgress, function (err) {
                     activeRenderProcess = null;
-                    onRenderComplete(err, config);
-                });
+                    onRenderComplete(err, config, autoCleanup);
+                }, autoCleanup);
             } catch (e) {
                 handleError('Internal render error: ' + e.message);
             }
         });
     }
 
-    function onProgress(percent, phase) {
+    function onProgress(percent, phase, etaMs) {
         setProgress(percent);
+        setEta(etaMs);
         if (phase === 'ae') {
             setStatus('Rendering\u2026');
         } else if (phase === 'ffmpeg_start') {
@@ -178,25 +215,46 @@
         }
     }
 
-    function onRenderComplete(err, config) {
+    function onRenderComplete(err, config, autoCleanup) {
         isExporting = false;
         setExportButtonState(false);
 
         if (err) {
             setProgress(0);
             setStatus('');
+            setEta(null);
             csInterface.evalScript('joos_cleanup()');
             showNotification('Export Failed', err.message || String(err));
         } else {
             csInterface.evalScript('joos_cleanup()', function() {
                 setProgress(0);
                 setStatus('');
-                showNotification(
-                    'Export Complete',
-                    config && config.outputPath
-                        ? 'Video saved to:\n' + config.outputPath
-                        : 'Video exported successfully.'
-                );
+                setEta(null);
+
+                var autoClose = (window.JoosBehavior && window.JoosBehavior.getAutoClose)
+                    ? window.JoosBehavior.getAutoClose()
+                    : false;
+
+                if (autoClose) {
+                    // Skip the completion alert entirely rather than
+                    // showing it and closing right after — alert() blocks
+                    // further script execution until dismissed, so the
+                    // close call wouldn't actually run until the user
+                    // clicked through it anyway, defeating the point of
+                    // "auto". The panel disappearing is itself the signal.
+                    csInterface.closeExtension();
+                    return;
+                }
+
+                var message = config && config.outputPath
+                    ? 'Video saved to:\n' + config.outputPath
+                    : 'Video exported successfully.';
+
+                if (autoCleanup === false && config && config.frameDir) {
+                    message += '\n\nTemp files kept at:\n' + config.frameDir;
+                }
+
+                showNotification('Export Complete', message);
             });
         }
     }
@@ -206,6 +264,7 @@
         setExportButtonState(false);
         setProgress(0);
         setStatus('');
+        setEta(null);
         showNotification('Export Failed', message);
     }
 
@@ -216,13 +275,41 @@
     }
 
     function setStatus(msg) {
-        if (ui.statusMsg) ui.statusMsg.textContent = msg;
+        if (ui.statusLabel) ui.statusLabel.textContent = msg;
+    }
+
+    // etaMs is the same estimated-time-remaining value render.js derives
+    // from the rate-based totalEstimate math used for the percentage
+    // (estimatedTotalDuration - elapsedSoFar) — this just formats it.
+    function setEta(etaMs) {
+        if (!ui.statusEta) return;
+        ui.statusEta.textContent = formatEta(etaMs);
+    }
+
+    function formatEta(etaMs) {
+        if (etaMs === null || etaMs === undefined || !isFinite(etaMs) || etaMs <= 0) {
+            return '';
+        }
+
+        // Round up rather than down/nearest — an ETA that counts down to
+        // exactly zero as work finishes reads as more honest than one that
+        // hits "0s left" a moment before the process actually completes.
+        var totalSeconds = Math.ceil(etaMs / 1000);
+        if (totalSeconds < 1) return '~1s left';
+
+        var minutes = Math.floor(totalSeconds / 60);
+        var seconds = totalSeconds % 60;
+
+        if (minutes > 0) {
+            return '~' + minutes + 'm ' + seconds + 's left';
+        }
+        return '~' + seconds + 's left';
     }
 
     function setProgress(percent) {
         var p = Math.max(0, Math.min(100, percent));
         if (ui.progressFill) ui.progressFill.style.width = p + '%';
-        if (ui.progressPct)  ui.progressPct.textContent  = p + '%';
+        if (ui.progressPct)  ui.progressPct.textContent  = p.toFixed(2) + '%';
     }
 
     function setExportButtonState(exporting) {
