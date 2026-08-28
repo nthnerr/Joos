@@ -1,0 +1,502 @@
+/* Styling for the Settings view. Layout/toggle mechanics (.view,
+   .view-hidden, .meta-row, .settings-link) live in style.css alongside the
+   rest of the panel chrome — this file only covers content specific to the
+   settings screen itself. */
+
+.settings-header {
+    display:       flex;
+    align-items:   center;
+    gap:           12px;
+    margin-bottom: 28px;
+}
+
+.back-btn {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    width:           30px;
+    height:          30px;
+    flex-shrink:     0;
+    margin-left:     -6px; /* optically align the icon with the title text above/below it */
+    background:      none;
+    border:          none;
+    border-radius:   50%;
+    color:           var(--text-secondary);
+    cursor:          pointer;
+    transition:      all var(--transition);
+}
+
+.back-btn:hover {
+    background: var(--accent-dim);
+    color:      var(--accent);
+    transform:  translateX(-2px);
+}
+
+.back-btn:active {
+    transform: translateX(-2px) scale(0.92);
+}
+
+.back-btn:focus-visible {
+    outline:        2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.settings-title {
+    font-size:      16px;
+    font-weight:    700;
+    color:          var(--text-primary);
+    letter-spacing: 0.3px;
+}
+
+.setting-row {
+    display:         flex;
+    align-items:     center;
+    justify-content: space-between;
+    flex-wrap:       wrap; /* graceful fallback: if label+control can't both fit on one line at narrow panel widths, the control wraps to its own line below instead of overflowing and getting clipped */
+    gap:             16px;
+    padding-bottom:  20px;
+    margin-bottom:   20px;
+    border-bottom:   1px solid var(--border-subtle);
+}
+
+/* Used for controls too wide to sit beside the label on one row (the
+   Theme/Density segmented controls) — label+hint-badge stack above a
+   full-width control instead of splitting the row horizontally. */
+.setting-row.stacked {
+    flex-direction: column;
+    align-items:    stretch;
+    gap:            10px;
+}
+
+.setting-label-group {
+    display:     flex;
+    flex-direction: row;
+    align-items: center;
+    gap:         6px;
+    min-width:   0;
+}
+
+/* ---- Single scrollable settings body ----
+   The header (back button + "Settings" title) stays pinned; everything
+   below it — all three sections — scrolls as one continuous page. */
+
+.settings-scroll-area {
+    flex:       1;
+    min-height: 0;
+    overflow-y: auto;
+    /* Small right padding keeps content from sitting flush against the
+       themed scrollbar below. */
+    padding-right: 4px;
+}
+
+.settings-scroll-area::-webkit-scrollbar {
+    width: 8px;
+}
+
+.settings-scroll-area::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.settings-scroll-area::-webkit-scrollbar-thumb {
+    background:    var(--text-muted);
+    border-radius: 999px;
+}
+
+.settings-scroll-area::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+}
+
+.settings-section-heading {
+    font-size:      13px;
+    font-weight:    700;
+    color:          var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding-top:    24px;
+    margin-bottom:  16px;
+}
+
+.settings-scroll-area > .settings-section-heading:first-child {
+    padding-top: 0;
+}
+
+/* ---- Hint badge + tooltip (replaces the old description paragraph under
+   each setting's title) ---- */
+
+.hint-badge {
+    position:        relative;
+    display:         inline-flex;
+    align-items:     center;
+    justify-content: center;
+    width:           14px;
+    height:          14px;
+    flex-shrink:     0;
+    border:          1px solid var(--text-muted);
+    border-radius:   50%;
+    color:           var(--text-muted);
+    font-size:       9px;
+    font-weight:     700;
+    line-height:     1;
+    cursor:          help;
+    transition:      all var(--transition);
+}
+
+.hint-badge:hover,
+.hint-badge:focus-visible {
+    border-color: var(--accent);
+    color:        var(--accent);
+    outline:      none;
+}
+
+.hint-tooltip {
+    /* position:fixed (not absolute) is deliberate: it removes this element
+       from any scrolling ancestor's layout/overflow calculation entirely,
+       since fixed positioning is relative to the viewport rather than a
+       containing block. With position:absolute, even a visibility:hidden
+       tooltip still occupies its full box in the document — meaning a
+       tooltip anchored past the container's edge could silently widen
+       .settings-scroll-area's scrollable content and produce a phantom
+       horizontal scrollbar, regardless of whether it was actually being
+       hovered. left/top are set inline by settings.js on hover/focus,
+       computed from the badge's real position and clamped to the viewport
+       — a static CSS anchor (e.g. left:0) can't be correct for every
+       badge, since how far right a badge sits depends on its label's
+       length, which varies per setting. */
+    position:        fixed;
+    top:             0;
+    left:            0;
+    width:           max-content;
+    max-width:       170px;
+    background:      var(--bg-elevated);
+    border:          1px solid var(--border-subtle);
+    border-radius:   var(--radius-sm);
+    box-shadow:      var(--shadow-md);
+    padding:         8px 10px;
+    color:           var(--text-secondary);
+    font-size:       11px;
+    font-weight:     400;
+    text-transform:  none;
+    letter-spacing:  normal;
+    line-height:     1.4;
+    text-align:      left;
+    opacity:         0;
+    visibility:      hidden;
+    pointer-events:  none;
+    transform:       translateY(4px);
+    transition:      opacity var(--transition), transform var(--transition), visibility var(--transition);
+    z-index:         20;
+}
+
+.hint-badge:hover .hint-tooltip,
+.hint-badge:focus-visible .hint-tooltip {
+    opacity:    1;
+    visibility: visible;
+    transform:  translateY(0);
+}
+
+/* ---- Segmented control (Theme, UI Density) ----
+   Same visual language as the main view's Upscale toggle (main.js/style.css)
+   but defined separately here since this is settings-screen content, not
+   shared app chrome. */
+
+.segmented-control {
+    display: flex;
+    gap:     8px;
+    width:   100%;
+}
+
+.segmented-control input[type="radio"] {
+    position:       absolute;
+    opacity:        0;
+    width:          0;
+    height:         0;
+    pointer-events: none;
+}
+
+.segmented-option {
+    flex:            1;
+    min-width:       0; /* removes flexbox's default content-based shrink floor — without this, a 3-way row (Theme: Light/Dark/Auto) can overflow horizontally at narrow panel widths instead of compressing */
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    height:          36px;
+    background:      var(--bg-elevated);
+    border:          1px solid var(--border-subtle);
+    color:           var(--text-secondary);
+    font-size:       clamp(9px, 3vw, 11px);
+    font-weight:     600;
+    text-transform:  uppercase;
+    letter-spacing:  0.6px;
+    cursor:          pointer;
+    border-radius:   var(--radius-sm);
+    transition:      all var(--transition);
+    user-select:     none;
+    overflow:        hidden;
+    text-overflow:   ellipsis;
+    white-space:     nowrap;
+}
+
+.segmented-option:hover {
+    background:   var(--accent-dim);
+    color:        var(--text-primary);
+    border-color: var(--accent);
+}
+
+.segmented-control input[type="radio"]:checked + .segmented-option {
+    background:   var(--accent);
+    color:        var(--bg-dark);
+    border-color: var(--accent);
+    box-shadow:   0 0 0 3px var(--accent-dim);
+}
+
+.segmented-control input[type="radio"]:focus-visible + .segmented-option {
+    outline:        2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.color-control {
+    display:     flex;
+    align-items: center;
+    gap:         10px;
+    min-width:   0;
+}
+
+/* input[type="color"]'s picker dialog itself can't be restyled — only the
+   swatch/container — so this rounds and borders it to match the app's
+   existing radius/border language. */
+input[type="color"].color-swatch-input {
+    -webkit-appearance: none;
+    appearance:         none;
+    width:               38px;
+    height:              38px;
+    padding:             0;
+    background:          none;
+    border:              1px solid var(--border-subtle);
+    border-radius:       var(--radius-sm);
+    cursor:              pointer;
+    overflow:            hidden;
+}
+
+input[type="color"].color-swatch-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+input[type="color"].color-swatch-input::-webkit-color-swatch {
+    border:        none;
+    border-radius: calc(var(--radius-sm) - 1px);
+}
+
+input[type="color"].color-swatch-input::-moz-color-swatch {
+    border:        none;
+    border-radius: calc(var(--radius-sm) - 1px);
+}
+
+input[type="color"].color-swatch-input:focus-visible {
+    outline:        2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.hex-input {
+    width:          clamp(64px, 22vw, 92px);
+    min-width:      0;
+    flex-shrink:    1;
+    height:         38px;
+    background:     var(--bg-elevated);
+    border:         1px solid var(--border-subtle);
+    border-radius:  var(--radius-sm);
+    color:          var(--text-primary);
+    font-size:      13px;
+    font-weight:    600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    text-align:     center;
+    padding:        0 6px;
+}
+
+.hex-input:focus {
+    outline:    none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.reset-btn {
+    width:          100%;
+    padding:        14px;
+    margin-top:     4px;
+    margin-bottom:  28px;
+    background:     var(--bg-elevated);
+    border:         1px solid var(--border-subtle);
+    color:          var(--text-secondary);
+    font-size:      12px;
+    font-weight:    700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor:         pointer;
+    border-radius:  var(--radius-md);
+    transition:     all var(--transition);
+}
+
+.reset-btn:hover {
+    background:   var(--accent-dim);
+    border-color: var(--accent);
+    color:        var(--accent);
+}
+
+.reset-btn:active {
+    transform: scale(0.98);
+}
+
+.reset-btn:focus-visible {
+    outline:        2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+/* ---- Export Defaults: Default Preset (reuses .quality-header,
+   .slider-container, .quality-slider, .upscale-buttons, .upscale-btn from
+   style.css directly — same visual component as the main view's controls,
+   just wired to a stored default instead of an active export) ---- */
+
+.default-preset-control {
+    display:        flex;
+    flex-direction: column;
+    gap:            14px;
+    width:          100%;
+}
+
+/* ---- Export Defaults: Default Output Folder ---- */
+
+.folder-control {
+    display:     flex;
+    align-items: center;
+    gap:         8px;
+    width:       100%;
+}
+
+.folder-path {
+    flex:           1;
+    min-width:      0; /* required for text-overflow ellipsis to work inside a flex item */
+    height:         36px;
+    display:        flex;
+    align-items:    center;
+    padding:        0 10px;
+    background:     var(--bg-elevated);
+    border:         1px solid var(--border-subtle);
+    border-radius:  var(--radius-sm);
+    color:          var(--text-muted);
+    font-size:      11px;
+    white-space:    nowrap;
+    overflow:       hidden;
+    text-overflow:  ellipsis;
+}
+
+.folder-path.is-set {
+    color: var(--text-primary);
+}
+
+.browse-btn {
+    flex-shrink:    0;
+    height:         36px;
+    padding:        0 14px;
+    background:     var(--bg-elevated);
+    border:         1px solid var(--border-subtle);
+    border-radius:  var(--radius-sm);
+    color:          var(--text-secondary);
+    font-size:      11px;
+    font-weight:    600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor:         pointer;
+    transition:     all var(--transition);
+}
+
+.browse-btn:hover {
+    background:   var(--accent-dim);
+    border-color: var(--accent);
+    color:        var(--accent);
+}
+
+.browse-btn:focus-visible {
+    outline:        2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.clear-folder-btn {
+    align-self:      flex-start;
+    margin-top:      6px;
+    margin-bottom:   20px;
+    background:      none;
+    border:          none;
+    padding:         0;
+    font-size:       10px;
+    font-weight:     600;
+    color:           var(--text-muted);
+    text-decoration: underline;
+    cursor:          pointer;
+    transition:      color var(--transition);
+}
+
+.clear-folder-btn:hover {
+    color: var(--accent);
+}
+
+.clear-folder-btn:focus-visible {
+    outline:        2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* ---- Toggle switch (Behavior's on/off settings) ----
+   Distinct from .segmented-control on purpose: segmented controls are for
+   picking one of several options (Theme, Density, Remember Scope); a
+   switch better signals a plain on/off flag. */
+
+.toggle-switch {
+    position:    relative;
+    display:     inline-block;
+    width:       42px;
+    height:      24px;
+    flex-shrink: 0;
+    cursor:      pointer;
+}
+
+.toggle-switch input[type="checkbox"] {
+    position:       absolute;
+    opacity:        0;
+    width:          0;
+    height:         0;
+    pointer-events: none;
+}
+
+.toggle-track {
+    position:      absolute;
+    inset:         0;
+    background:    var(--bg-elevated);
+    border:        1px solid var(--border-subtle);
+    border-radius: 999px;
+    transition:    background var(--transition), border-color var(--transition);
+}
+
+.toggle-thumb {
+    position:      absolute;
+    top:           2px;
+    left:          2px;
+    width:         18px;
+    height:        18px;
+    background:    var(--text-secondary);
+    border-radius: 50%;
+    transition:    transform var(--transition), background var(--transition);
+}
+
+.toggle-switch input[type="checkbox"]:checked + .toggle-track {
+    background:   var(--accent);
+    border-color: var(--accent);
+}
+
+.toggle-switch input[type="checkbox"]:checked + .toggle-track .toggle-thumb {
+    transform:  translateX(18px);
+    background: var(--bg-dark);
+}
+
+.toggle-switch input[type="checkbox"]:focus-visible + .toggle-track {
+    outline:        2px solid var(--accent);
+    outline-offset: 2px;
+}
