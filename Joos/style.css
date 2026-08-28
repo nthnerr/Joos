@@ -14,9 +14,32 @@
     --shadow-sm:      0 2px  8px rgba(0, 0, 0, 0.30);
     --shadow-md:      0 4px 16px rgba(0, 0, 0, 0.40);
     --shadow-lg:      0 8px 24px rgba(0, 0, 0, 0.50);
+    --inset-shadow:   inset 0 1px 3px rgba(0, 0, 0, 0.40);
+    --inset-shadow-lg: inset 0 2px 4px rgba(0, 0, 0, 0.30);
     --radius-sm:      6px;
     --radius-md:      8px;
     --transition:     0.2s ease;
+}
+
+/* Light theme, toggled by settings.js setting data-theme on <html>.
+   Only the neutral surface/text/border/shadow tokens are redefined here —
+   --accent and its derivatives are set inline on the same element by the
+   accent-color picker (settings.js), and inline styles always win over any
+   stylesheet rule regardless of theme, so the chosen accent carries over
+   into light mode unchanged without needing to be repeated here. */
+:root[data-theme="light"] {
+    --bg-dark:          #eef0f2;
+    --bg-panel:         #ffffff;
+    --bg-elevated:      #f1f2f4;
+    --text-primary:     #17181a;
+    --text-secondary:   #5b5f66;
+    --text-muted:       #9a9ea5;
+    --border-subtle:    rgba(0, 0, 0, 0.10);
+    --shadow-sm:        0 2px  8px rgba(20, 20, 30, 0.08);
+    --shadow-md:        0 4px 16px rgba(20, 20, 30, 0.10);
+    --shadow-lg:        0 8px 24px rgba(20, 20, 30, 0.14);
+    --inset-shadow:     inset 0 1px 3px rgba(0, 0, 0, 0.08);
+    --inset-shadow-lg:  inset 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 *,
@@ -65,7 +88,12 @@ body {
     height:         100%;
     display:        flex;
     flex-direction: column;
-    padding:        32px 24px 24px;
+    /* Fluid padding: scales smoothly between the panel's declared min/max
+       width (manifest.xml: 200-400px) instead of eating a fixed 48px out of
+       an already-tight budget at the narrow end. clamp(min, preferred, max)
+       — the middle term is viewport-width-relative so it tracks the panel's
+       actual rendered size continuously, not just at hand-picked breakpoints. */
+    padding: clamp(16px, 10vw, 32px) clamp(12px, 8vw, 24px) clamp(12px, 6vw, 24px);
     overflow:       hidden;
 }
 
@@ -75,7 +103,11 @@ body {
 }
 
 .brand {
-    font-size:      52px;
+    /* Fluid wordmark: at the panel's 200px floor, 52px fixed text plus
+       -1px letter-spacing can genuinely exceed the ~152px content width
+       left after padding — this scales it down smoothly instead of
+       letting it get clipped. */
+    font-size:      clamp(26px, 18vw, 52px);
     font-weight:    800;
     color:          var(--accent);
     letter-spacing: -1px;
@@ -83,24 +115,103 @@ body {
     line-height:    1;
 }
 
+.meta-row {
+    display:         flex;
+    justify-content: center;
+    align-items:     center;
+    gap:             8px;
+    margin-bottom:   32px;
+}
+
 .version {
-    text-align:     center;
-    font-size:      11px;
+    font-size:      10px;
     color:          var(--text-muted);
     font-weight:    500;
-    margin-bottom:  32px;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
+}
+
+.meta-divider {
+    font-size: 10px;
+    color:     var(--text-muted);
+    opacity:   0.6;
+}
+
+.settings-link {
+    background:            none;
+    border:                none;
+    padding:               0;
+    font-size:             11px;
+    font-weight:           600;
+    color:                 var(--accent);
+    letter-spacing:        0.3px;
+    text-decoration:       underline;
+    text-underline-offset: 2px;
+    cursor:                pointer;
+    transition:            color var(--transition);
+}
+
+.settings-link:hover {
+    color: var(--accent-hover);
+}
+
+.settings-link:focus-visible {
+    outline:        2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius:  2px;
+}
+
+/* The panel body swaps between the export UI and the settings UI as two
+   sibling "views" — only one is ever shown at a time. Both need to behave
+   like panel-container's own flex column so children (e.g. progress-section's
+   margin-top: auto) lay out exactly as before, now one level deeper. */
+.view {
+    display:        flex;
+    flex-direction: column;
+    flex:           1;
+    min-height:     0;
+    /* Safety net against vertical overflow at short panel heights.
+       main-view has no inner scroll wrapper (unlike settings-view, which
+       scrolls via .settings-scroll-area beneath its own pinned header) —
+       this lets its content scroll instead of silently clipping if it ever
+       exceeds the available height. A no-op when content already fits:
+       overflow:auto only shows a scrollbar when actually needed. */
+    overflow-y: auto;
+}
+
+.view::-webkit-scrollbar {
+    width: 8px;
+}
+
+.view::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.view::-webkit-scrollbar-thumb {
+    background:    var(--text-muted);
+    border-radius: 999px;
+}
+
+.view::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+}
+
+.view-hidden {
+    /* !important is deliberate here: this is a hard visibility toggle for
+       navigation state, and it needs to win regardless of what other rules
+       (e.g. density's ID-selector-based #brand-header override below) might
+       otherwise out-specificity it for the same element. */
+    display: none !important;
 }
 
 .quality-section {
-    margin-bottom: 28px;
+    margin-bottom: clamp(14px, 6vh, 28px);
 }
 
 .quality-header {
     display:         flex;
     justify-content: space-between;
     align-items:     center;
-    margin-bottom:   16px;
+    margin-bottom:   clamp(8px, 3vh, 16px);
 }
 
 .label {
@@ -134,7 +245,7 @@ body {
     cursor:             pointer;
     border-radius:      3px;
     margin-bottom:      12px;
-    box-shadow:         inset 0 1px 3px rgba(0, 0, 0, 0.40);
+    box-shadow:         var(--inset-shadow);
 }
 
 .quality-slider::-webkit-slider-thumb {
@@ -198,7 +309,7 @@ body {
 }
 
 .upscale-section {
-    margin-bottom: 28px;
+    margin-bottom: clamp(14px, 6vh, 28px);
 }
 
 .upscale-label {
@@ -225,14 +336,15 @@ body {
 
 .upscale-btn {
     flex:            1;
+    min-width:       0; /* removes flexbox's default content-based shrink floor, which is what let this row overflow at narrow panel widths instead of compressing */
     display:         flex;
     align-items:     center;
     justify-content: center;
-    height:          48px;
+    height:          clamp(38px, 9vh, 48px);
     background:      var(--bg-elevated);
     border:          1px solid var(--border-subtle);
     color:           var(--text-secondary);
-    font-size:       13px;
+    font-size:       clamp(11px, 3.2vw, 13px);
     font-weight:     600;
     text-align:      center;
     cursor:          pointer;
@@ -264,7 +376,7 @@ body {
 
 .export-button {
     width:          100%;
-    padding:        18px 30px;
+    padding:        clamp(12px, 4vh, 18px) clamp(16px, 8vw, 30px);
     background:     var(--accent);
     border:         none;
     color:          var(--bg-dark);
@@ -276,7 +388,7 @@ body {
     border-radius:  var(--radius-md);
     box-shadow:     var(--shadow-md);
     transition:     all var(--transition);
-    margin-bottom:  24px;
+    margin-bottom:  clamp(12px, 4vh, 24px);
 }
 
 .export-button:hover:not(:disabled) {
@@ -334,12 +446,21 @@ body {
 }
 
 .status-text {
-    text-align:    center;
+    display:         flex;
+    justify-content: space-between;
+    align-items:     baseline;
+    gap:             8px;
     font-size:     12px;
     color:         var(--text-secondary);
     font-weight:   500;
     margin-bottom: 10px;
     min-height:    18px;
+}
+
+#status-eta {
+    color:       var(--text-muted);
+    font-weight: 500;
+    white-space: nowrap;
 }
 
 .progress-bar {
@@ -350,7 +471,7 @@ body {
     border-radius: var(--radius-md);
     position:      relative;
     overflow:      hidden;
-    box-shadow:    inset 0 2px 4px rgba(0, 0, 0, 0.30);
+    box-shadow:    var(--inset-shadow-lg);
 }
 
 .progress-fill {
@@ -359,7 +480,7 @@ body {
     width:         0%;
     transition:    width 0.3s ease;
     border-radius: var(--radius-md);
-    box-shadow:    0 0 12px rgba(91, 192, 222, 0.50);
+    box-shadow:    0 0 12px var(--accent-glow-hi);
 }
 
 .progress-text {
@@ -374,4 +495,97 @@ body {
     z-index:     10;
     letter-spacing: 0.5px;
     user-select: none;
+}
+
+/* ==========================================================================
+   Compact density, toggled by settings.js setting data-density="compact" on
+   <html>. Keeps every functional control (quality slider, upscale toggle,
+   export button, status/progress) but drops purely decorative elements
+   (the full wordmark, the credit line, the slider's tick marks) and tightens
+   spacing everywhere else. Expanded (the default, unmodified rules above)
+   is untouched — these are additive overrides layered on top, selected via
+   the higher specificity the [data-density="compact"] attribute adds.
+   ========================================================================== */
+
+[data-density="compact"] .panel-container {
+    padding: 18px 16px 16px;
+}
+
+/* Collapse the two-block brand header (wordmark, then a separate centered
+   meta row below it) into a single slim row: small wordmark left, Settings
+   link right. Version is dropped here — it's still reachable inside
+   Settings — since a compact layout is explicitly meant to shed anything
+   that isn't a key feature. */
+[data-density="compact"] #brand-header {
+    display:         flex;
+    flex-direction:  row;
+    align-items:     center;
+    justify-content: space-between;
+    margin-bottom:   14px;
+}
+
+[data-density="compact"] .header {
+    margin-bottom: 0;
+    text-align:    left;
+}
+
+[data-density="compact"] .brand {
+    font-size:      15px;
+    letter-spacing: -0.2px;
+}
+
+[data-density="compact"] .meta-row {
+    margin-bottom: 0;
+}
+
+[data-density="compact"] .version,
+[data-density="compact"] .meta-divider {
+    display: none;
+}
+
+[data-density="compact"] .quality-section {
+    margin-bottom: 14px;
+}
+
+[data-density="compact"] .quality-header {
+    margin-bottom: 8px;
+}
+
+[data-density="compact"] .slider-points {
+    display: none;
+}
+
+[data-density="compact"] .quality-slider {
+    margin-bottom: 0;
+}
+
+[data-density="compact"] .upscale-section {
+    margin-bottom: 14px;
+}
+
+[data-density="compact"] .upscale-label {
+    margin-bottom: 6px;
+}
+
+[data-density="compact"] .upscale-btn {
+    height: 36px;
+}
+
+[data-density="compact"] .export-button {
+    padding:       12px 20px;
+    margin-bottom: 12px;
+}
+
+/* The credit line is pure branding, not a key feature — drop it entirely
+   in compact mode rather than shrinking it. */
+[data-density="compact"] .credit {
+    display: none;
+}
+
+[data-density="compact"] .status-text {
+    margin-bottom: 6px;
+}
+
+[data-density="compact"] .progress-bar {
+    height: 26px;
 }
